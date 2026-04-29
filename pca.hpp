@@ -232,24 +232,30 @@ public:
     // ------------------------------------------------------------------
     // Load pre-fitted parameters from a generated header.
     //
-    // components:         D*K row-major array; index d*K + k.
+    // components:         D*K row-major vector; index d*K + k.
     //                     Matches Python's components_.flatten(order='C').
     // explained_variance: K raw eigenvalues.
     // explained_ratio:    K per-component variance ratios.
     // total_variance:     sum of all D eigenvalues.
     // ------------------------------------------------------------------
     void load(int D, int K,
-              const T* components,
-              const T* explained_variance,
-              const T* explained_ratio,
-              T         total_variance) {
+              const std::vector<T>& components,
+              const std::vector<T>& explained_variance,
+              const std::vector<T>& explained_ratio,
+              T                     total_variance) {
         if (D <= 0 || K <= 0)
             throw std::invalid_argument("D and K must be positive.");
+        if (static_cast<int>(components.size())         != D * K)
+            throw std::invalid_argument("components size must equal D*K.");
+        if (static_cast<int>(explained_variance.size()) != K)
+            throw std::invalid_argument("explained_variance size must equal K.");
+        if (static_cast<int>(explained_ratio.size())    != K)
+            throw std::invalid_argument("explained_ratio size must equal K.");
         d_         = D;
         k_         = K;
-        components_.assign(components,         components         + D * K);
-        expl_var_  .assign(explained_variance, explained_variance + K);
-        expl_ratio_.assign(explained_ratio,    explained_ratio    + K);
+        components_ = components;
+        expl_var_   = explained_variance;
+        expl_ratio_ = explained_ratio;
         total_var_ = total_variance;
         fitted_    = true;
     }
