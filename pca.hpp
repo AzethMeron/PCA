@@ -200,32 +200,44 @@ public:
     }
 
     // ------------------------------------------------------------------
-    // Project pre-centered (N, D) data → (N, K).
-    // batch_size == 0  → single pass (default).
+    // Project a single pre-centered sample x (length D) → vector of K scores.
+    // ------------------------------------------------------------------
+    std::vector<T> transform_one(const std::vector<T>& x) const {
+        check_fitted();
+        if (static_cast<int>(x.size()) != d_)
+            throw std::invalid_argument("x size does not match fitted dimension.");
+        return transform_one_impl(x.data());
+    }
+
+    // ------------------------------------------------------------------
+    // Same as transform_one but accepts a raw pointer + explicit size.
+    // Useful when the caller already manages a contiguous buffer.
+    // ------------------------------------------------------------------
+    std::vector<T> transform_one_raw(const T* data, std::size_t size) const {
+        check_fitted();
+        if (static_cast<int>(size) != d_)
+            throw std::invalid_argument("data size does not match fitted dimension.");
+        return transform_one_impl(data);
+    }
+
+    // ------------------------------------------------------------------
+    // Project pre-centered (N, D) data → (N, K) using transform_one().
     // ------------------------------------------------------------------
     std::vector<std::vector<T>> transform(
             const std::vector<std::vector<T>>& X, int batch_size = 0) const {
         check_fitted();
         if (X.empty())
             throw std::invalid_argument("X must not be empty.");
-        if (batch_size < 0)
-            throw std::invalid_argument("batch_size must be >= 0.");
+        (void)batch_size;  // row-by-row via transform_one; batching is a no-op
 
         const int N = static_cast<int>(X.size());
-        const int D = static_cast<int>(X[0].size());
-        if (D != d_)
+        if (static_cast<int>(X[0].size()) != d_)
             throw std::invalid_argument(
                 "X feature dimension does not match fitted dimension.");
 
-        std::vector<std::vector<T>> out(N, std::vector<T>(k_, T{0}));
-        const int step = (batch_size > 0) ? batch_size : N;
-        for (int start = 0; start < N; start += step) {
-            const int end = std::min(start + step, N);
-            for (int i = start; i < end; ++i)
-                for (int j = 0; j < k_; ++j)
-                    for (int d = 0; d < d_; ++d)
-                        out[i][j] += X[i][d] * components_[d * k_ + j];
-        }
+        std::vector<std::vector<T>> out(N);
+        for (int i = 0; i < N; ++i)
+            out[i] = transform_one(X[i]);
         return out;
     }
 
@@ -273,6 +285,15 @@ private:
     void check_fitted() const {
         if (!fitted_)
             throw std::runtime_error("PCA must be fit (or loaded) before use.");
+    }
+
+    // Core single-sample projection; caller must ensure data has d_ elements.
+    std::vector<T> transform_one_impl(const T* x) const {
+        std::vector<T> out(k_, T{0});
+        for (int j = 0; j < k_; ++j)
+            for (int d = 0; d < d_; ++d)
+                out[j] += x[d] * components_[d * k_ + j];
+        return out;
     }
 
     int            n_components_;
