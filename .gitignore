@@ -1,2 +1,4 @@
 __pycache__/
 *.pyc
+lcg_expected.txt
+lcg_pca_params.hpp
