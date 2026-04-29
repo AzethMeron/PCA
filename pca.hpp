@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PCA_HPP
+#define PCA_HPP
 
 #include <algorithm>
 #include <cmath>
@@ -306,3 +307,5 @@ private:
 };
 
 } // namespace pca
+
+#endif // PCA_HPP
