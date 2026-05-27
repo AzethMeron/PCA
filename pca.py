@@ -76,13 +76,16 @@ class PCA:
         self._fitted = True
         return self
 
-    def transform(self, X: np.ndarray, batch_size: Optional[int] = None) -> np.ndarray:
+    def transform(self, X: np.ndarray, batch_size: Optional[int] = None,
+                  whiten: bool = False) -> np.ndarray:
         """
         Project pre-centered X onto learned components.
 
         Args:
             X:          (N, D) array, centered the same way as fit data.
             batch_size: if provided, processes in chunks.
+            whiten:     if True, divide each component by sqrt(eigenvalue)
+                        so every output dimension has unit variance.
         Returns:
             (N, K) array.
         """
@@ -100,13 +103,16 @@ class PCA:
             raise ValueError("batch_size must be a positive integer or None.")
 
         if batch_size is None or batch_size >= N:
-            return X @ self.components_
+            out = X @ self.components_
+        else:
+            K = self.components_.shape[1]
+            out = np.empty((N, K), dtype=np.float64)
+            for start in range(0, N, batch_size):
+                end = min(start + batch_size, N)
+                out[start:end] = X[start:end] @ self.components_
 
-        K = self.components_.shape[1]
-        out = np.empty((N, K), dtype=np.float64)
-        for start in range(0, N, batch_size):
-            end = min(start + batch_size, N)
-            out[start:end] = X[start:end] @ self.components_
+        if whiten:
+            out /= np.sqrt(self.explained_variance_)
         return out
 
     def explained_variance_ratio(self) -> np.ndarray:

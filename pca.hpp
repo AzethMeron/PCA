@@ -203,29 +203,31 @@ public:
     // ------------------------------------------------------------------
     // Project a single pre-centered sample x (length D) → vector of K scores.
     // ------------------------------------------------------------------
-    std::vector<T> transform_one(const std::vector<T>& x) const {
+    std::vector<T> transform_one(const std::vector<T>& x, bool whiten = false) const {
         check_fitted();
         if (static_cast<int>(x.size()) != d_)
             throw std::invalid_argument("x size does not match fitted dimension.");
-        return transform_one_impl(x.data());
+        return transform_one_impl(x.data(), whiten);
     }
 
     // ------------------------------------------------------------------
     // Same as transform_one but accepts a raw pointer + explicit size.
     // Useful when the caller already manages a contiguous buffer.
     // ------------------------------------------------------------------
-    std::vector<T> transform_one_raw(const T* data, std::size_t size) const {
+    std::vector<T> transform_one_raw(const T* data, std::size_t size, bool whiten = false) const {
         check_fitted();
         if (static_cast<int>(size) != d_)
             throw std::invalid_argument("data size does not match fitted dimension.");
-        return transform_one_impl(data);
+        return transform_one_impl(data, whiten);
     }
 
     // ------------------------------------------------------------------
     // Project pre-centered (N, D) data → (N, K) using transform_one().
     // ------------------------------------------------------------------
     std::vector<std::vector<T>> transform(
-            const std::vector<std::vector<T>>& X, int batch_size = 0) const {
+            const std::vector<std::vector<T>>& X,
+            int  batch_size = 0,
+            bool whiten     = false) const {
         check_fitted();
         if (X.empty())
             throw std::invalid_argument("X must not be empty.");
@@ -238,7 +240,7 @@ public:
 
         std::vector<std::vector<T>> out(N);
         for (int i = 0; i < N; ++i)
-            out[i] = transform_one(X[i]);
+            out[i] = transform_one(X[i], whiten);
         return out;
     }
 
@@ -289,11 +291,14 @@ private:
     }
 
     // Core single-sample projection; caller must ensure data has d_ elements.
-    std::vector<T> transform_one_impl(const T* x) const {
+    std::vector<T> transform_one_impl(const T* x, bool whiten) const {
         std::vector<T> out(k_, T{0});
-        for (int j = 0; j < k_; ++j)
+        for (int j = 0; j < k_; ++j) {
             for (int d = 0; d < d_; ++d)
                 out[j] += x[d] * components_[d * k_ + j];
+            if (whiten)
+                out[j] /= std::sqrt(expl_var_[j]);
+        }
         return out;
     }
 
