@@ -4,3 +4,6 @@ lcg_expected.txt
 lcg_pca_params.hpp
 lcg_pca50_params.hpp
 lcg_tx100_ref.txt
+lcg_full_pca_params.hpp
+lcg_full_ref.txt
+test_full_audit
